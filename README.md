@@ -4,4 +4,4 @@
 - connect to an existing server using the [client](MSCHAT%20v.1.3.0/client.exe)
 
 Source code for the project can be found [here](MSCHAT%20v.1.3.0/src).
-Note that I've used a [custom version](MSCHAT%20v.1.3.0/src/pydispo.py) of the module [pydispo](aakash30jan/pydispo).
+Note that I've used a [custom version](MSCHAT%20v.1.3.0/src/pydispo.py) of the module [pydispo](github.com/aakash30jan/pydispo).
