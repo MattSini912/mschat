@@ -1,3 +1,0 @@
-dolog:True
-auth:True
-server_open:False
