@@ -5,9 +5,6 @@
 
 Source code for the project can be found [here](MSCHAT%20v.1.3.0/src). Note that I've used a [custom version](MSCHAT%20v.1.3.0/src/pydispo.py) of the [pydispo](https://github.com/aakash30jan/pydispo) module.
 
-Server guide
-Client guide
-
 ## Encryption
 Messages sent using **mschat** are crypted using:
 1. [Diffie-Hellman key exchange method](https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange) to generate a numeric key shared by server and client
@@ -75,3 +72,30 @@ Encrypted tunnel active!
 [2022/08/01 12:05:01] >>> "RandomNick" joined!
 [2022/08/01 12:05:01] Connected to server as "RandomNick"! 1 users online. List of commands: /help
 ```
+## How to start a server
+1. open your server 
+2. insert your private IP:
+    - from the command prompt type `ipconfig`, your private IP should be something like 192.168.1.5
+    - insert 127.0.0.1 if you are using a service like [ngrok](https://ngrok.com/) or you want to connect only from your machine (e.g. for testing or management)
+```
+Enter your private IP (default = 127.0.0.1) -> 192.168.1.5
+Server started! Your public IP is: 123.45.67.89:55555
+SERVER password is: k702ipeiHInsSehCdB4w
+ADMIN password is: xBtygv5di8mgBH4bWyPq
+Type "/settings help" on terminal to show server's commands and settings
+Server is listening...
+```
+3. log in as SERVER
+```
+Enter server's IP adress (default = 127.0.0.1) -> 123.45.67.89
+Enter server's port (default = 55555) ->
+/login (default), /register or /delete ->
+Your nickname -> SERVER
+Password for profile (leave blank if not required) -> k702ipeiHInsSehCdB4w
+Connecting...
+Making requests...
+Encrypted tunnel active!
+[2022/08/01 12:15:00] >>> "SERVER" joined!
+[2022/08/01 12:15:00] Connected to server as "SERVER"! 1 users online. List of commands: /help
+```
+4. type `/settings help` to show all server's commands
