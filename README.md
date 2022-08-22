@@ -72,6 +72,7 @@ Encrypted tunnel active!
 [2022/08/01 12:05:01] >>> "RandomNick" joined!
 [2022/08/01 12:05:01] Connected to server as "RandomNick"! 1 users online. List of commands: /help
 ```
+To delete your profile you have to type `/delete` instead of `/register`
 ## How to start a server
 1. open your server 
 2. insert your private IP:
