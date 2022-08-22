@@ -11,4 +11,4 @@ Client guide
 Messages sent using `mschat` are crypted using:
 1. [Diffie-Hellman key exchange method](https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange) to generate a numeric key shared by server and client
 2. [PBKDF2 key derivation function](https://en.wikipedia.org/wiki/PBKDF2) to get a stronger key that can be used with encryption algorithms
-3. [Fernet](https://cryptography.io/en/latest/fernet/) to encrypt the message using the key
+3. [Fernet](https://cryptography.io/en/latest/fernet/) to encrypt the message using the derived key
