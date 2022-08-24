@@ -1,9 +1,9 @@
 # mschat
 **mschat** is a simple command-line application where you can:
-- create your own chat server using the [server](MSCHAT%20v.1.3.0/server)
-- connect to an existing server using the [client](MSCHAT%20v.1.3.0/client.exe)
+- create your own chat server using the [server](MSCHAT/server)
+- connect to an existing server using the [client](MSCHAT/client.exe)
 
-Source code for the project can be found [here](MSCHAT%20v.1.3.0/src). Note that I've used a [custom version](MSCHAT%20v.1.3.0/src/pydispo.py) of the [pydispo](https://github.com/aakash30jan/pydispo) module.
+Source code for the project can be found [here](MSCHAT/src). Note that I've used a [custom version](MSCHAT/src/pydispo.py) of the [pydispo](https://github.com/aakash30jan/pydispo) module.
 
 ## Encryption
 Messages sent using **mschat** are crypted using:
@@ -100,3 +100,18 @@ Encrypted tunnel active!
 [2022/08/01 12:15:00] Connected to server as "SERVER"! 1 users online. List of commands: /help
 ```
 4. type `/settings help` to show all server's commands
+
+## Recommended folder structure
+```
+MSCHAT
+    |
+    pydispo.py [if using py]
+    mycryptfunc.py [if using py]
+    client.exe/py
+    server
+        |
+        mycryptfunc.py [if not fetched before by a py]
+        server.exe/py
+        [server files]
+```
+    
