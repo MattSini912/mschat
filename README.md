@@ -30,7 +30,7 @@ Encrypted tunnel active!
 ```
 
 ## Authentication
-As an host, if you want to allow connection only from registered users you have to set `auth` to `true` (make sure to `open` the server).
+As an host, if you want to allow connection only from registered users, you have to set `auth` to `true` (make sure to `open` the server).
 
 As a user: 
 1. open your client 
