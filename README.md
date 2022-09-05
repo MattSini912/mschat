@@ -1,4 +1,4 @@
-# mschat
+# mschat (needs to be updated to 1.4.0)
 **mschat** is a simple command-line application where you can:
 - create your own chat server using the [server](MSCHAT/server)
 - connect to an existing server using the [client](MSCHAT/client.exe)
