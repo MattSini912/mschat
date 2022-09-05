@@ -1,7 +1,6 @@
-from enum import auto
 import os
 import time
-import socket
+from socket import *
 import hashlib
 import base64
 import random
@@ -14,6 +13,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from mycryptfunc import *
 from pydispo import *
 
+import traceback
 import secrets
 import string
 
@@ -31,9 +31,15 @@ def timestamp():
 # Server log
 def log(text=""):
     global dolog
-    if dolog and bool(text):
+    try:
+        if dolog and bool(text):
+            with open('serverlog.txt','a') as f:
+                f.write(f'{timestamp()} {text}\n')
+    except UnicodeEncodeError:
         with open('serverlog.txt','a') as f:
-            f.write(f'{timestamp()} {text}\n')
+                f.write(f'{timestamp()} <Unicode Error>\n')
+    except:
+        pass
 
 ####################################################
             
@@ -76,15 +82,30 @@ def setload():
             if temp[0] == "server_open":
                     server_open = eval(temp[1])
         except:
+            traceback.print_exc()
             continue   
    
 ###################################################
 
 default("ALL")
 
+# Start
+if os.name == 'nt':
+    os.system("")
+    print("\033[1;34m" + "MSCHAT by MattSini912" + "\033[0m")
+else:
+    print("MSCHAT by MattSini912")
+
+# Detect network
+host_name = gethostname()
+host_ip = gethostbyname(host_name)
+print("Detected hostname:", host_name)
+print("Detected private IP:", host_ip)
+print(70 * "-")
+
 auto_address = False
 with open("autoload.txt", "r") as f:
-    log("----------------------------------------------------------------------")
+    log(70 * "-")
     try:
         # Load settings in settings.txt
         lines = f.readlines()
@@ -99,8 +120,10 @@ with open("autoload.txt", "r") as f:
         # Load address in autoload.txt
         temp = lines[1].split(":",1)
         auto_address = temp[1].strip()
-        if auto_address == "None" or auto_address == "" or auto_address.isspace():
+        if auto_address == "None" or auto_address == "False" or auto_address == "" or auto_address.isspace():
             auto_address = False
+        if auto_address == "Auto" or auto_address == "True":
+            auto_address = host_ip
     except:
         pass
 
@@ -115,10 +138,10 @@ if host == "" or host.isspace():
 port = 55555
 
 # Starting Server
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server = socket(AF_INET, SOCK_STREAM)
 server.bind((host, port))
 server.listen()
-
+ 
 myip = get('https://api.ipify.org').text
 print("Server started! Your public IP is: " + myip + ":" + str(port))
 log("Server started! Your public IP is: " + myip + ":" + str(port))
@@ -128,6 +151,7 @@ clients = []
 nicknames = []
 servers = ["SERVER"]
 admins = ["SERVER", "ADMIN"]
+unblocked = ["SERVER"]
 muted = []
 keys = []
 
@@ -135,11 +159,16 @@ with open("admins.txt", "r") as f:
     lines = f.readlines()
     for line in lines:
         admins.append(line.strip())
+
+with open("unblocked.txt", "r") as f:
+    lines = f.readlines()
+    for line in lines:
+        unblocked.append(line.strip())
         
 def hashpwd(password, times=1):
     for i in range(0,times):
         h = hashlib.new('sha256')
-        h.update(password.encode('utf-8'))
+        h.update(password.encode('utf-8', 'replace'))
         password = h.hexdigest()
     return h.hexdigest()
 
@@ -158,13 +187,26 @@ adminpwd = hashpwd(adminpwd, 200000)
 print("Type \"/settings help\" on terminal to show server's commands and settings")
 
 # Sending Messages To All Connected Clients
-def broadcast(message):
-    for client in clients:
-        index = clients.index(client)
-        tls_key = keys[index]
-        crypted = myencrypt(message, tls_key)
-        if client in clients:
-            client.send(crypted.encode('utf-8'))
+def broadcast(message, clt=False):
+    if bool(clt):
+        try:
+            if clt in clients:
+                index = clients.index(clt)
+                tls_key = keys[index]
+                crypted = myencrypt(message, tls_key)
+                clt.send(crypted.encode('utf-8', 'replace'))
+        except:
+            print("Error delivering a message")
+    else:
+        for client in clients:
+            try:
+                index = clients.index(client)
+                tls_key = keys[index]
+                crypted = myencrypt(message, tls_key)
+                if client in clients:
+                    client.send(crypted.encode('utf-8', 'replace'))
+            except:
+                print("Error delivering a message")
 
 # Handling Messages From Clients
 def handle(client, tls_key=bytes(0)):
@@ -185,10 +227,10 @@ def handle(client, tls_key=bytes(0)):
     def ec(string):
         if tls_key != bytes(0):
             string = myencrypt(string, tls_key)
-            string = string.encode('utf-8')
+            string = string.encode('utf-8', 'replace')
             return string
         else:
-            return string.encode('utf-8')
+            return string.encode('utf-8', 'replace')
 
     def dc(token):
         if tls_key != bytes(0):
@@ -201,7 +243,7 @@ def handle(client, tls_key=bytes(0)):
         try:
             # Broadcasting Messages
             message = client.recv(8192)
-            msg = dc(message.decode('utf-8'))
+            msg = dc(message.decode('utf-8', 'replace'))
 
             #Anti-flood filter
             new_ts = time.time()
@@ -211,7 +253,7 @@ def handle(client, tls_key=bytes(0)):
             message_ts[3] = message_ts [4]
             message_ts[4] = message_ts [5]
             message_ts[5] = new_ts
-            if new_ts - message_ts[0] <= 5:
+            if new_ts - message_ts[0] <= 5 and nicknames[clients.index(client)] not in unblocked:
                 flood_count += 1
                 print(timestamp(), f'\"{nicknames[clients.index(client)]}\" blocked for: flooding ({flood_count*30} s)')
                 log(f'\"{nicknames[clients.index(client)]}\" blocked for: flooding ({flood_count*30} s)')
@@ -231,6 +273,15 @@ def handle(client, tls_key=bytes(0)):
                     adminlist = adminlist + admin + ", "
                 client.send(ec(adminlist))
 
+            elif msg.startswith('UBLIST'):
+                if nicknames[clients.index(client)] in admins:
+                    botlist = f"UNBLOCKED USERS ({len(unblocked)}): "
+                    for bot in unblocked:
+                        botlist = botlist + bot + ", "
+                    client.send(ec(botlist))
+                else:
+                    client.send(ec('Refused!'))
+            
             elif msg.startswith('MTLIST'):
                 if nicknames[clients.index(client)] in admins:
                     mutelist = f"MUTED USERS ({len(muted)}): "
@@ -268,7 +319,8 @@ def handle(client, tls_key=bytes(0)):
                 if name_to_dm in nicknames:
                     target_index = nicknames.index(name_to_dm)
                     client_to_dm = clients[target_index]
-                    client_to_dm.send(ec(f"(\"{nicknames[clients.index(client)]}\" -> YOU): {telegram}"))
+                    #client_to_dm.send(ec(f"(\"{nicknames[clients.index(client)]}\" -> YOU): {telegram}"))
+                    broadcast((f"(\"{nicknames[clients.index(client)]}\" -> YOU): {telegram}"), client_to_dm)
                     client.send(ec(f"(YOU -> \"{name_to_dm}\"): {telegram}"))
                     log(f"(\"{nicknames[clients.index(client)]}\" -> \"{name_to_dm}\"): {telegram}")
                 else:
@@ -283,8 +335,8 @@ def handle(client, tls_key=bytes(0)):
                         admins.append(name_to_op)
                         with open('admins.txt','a') as f:
                             f.write(f'{name_to_op}\n')
-                        print(timestamp(), f'\"{name_to_op}\" in now an admin')
-                        log(f'\"{name_to_op}\" in now an admin')
+                        print(timestamp(), f'\"{name_to_op}\" is now an admin')
+                        log(f'\"{name_to_op}\" is now an admin')
                         broadcast(f'\"{name_to_op}\" is now an admin!')
                     else:
                         client.send(ec(f'\"{name_to_op}\" is already an admin'))
@@ -302,11 +354,47 @@ def handle(client, tls_key=bytes(0)):
                             for line in lines:
                                 if line.strip() != name_to_deop:
                                     f.write(line)
-                        print(timestamp(), f'\"{name_to_deop}\" in no more an admin')
-                        log(f'\"{name_to_deop}\" in no more an admin')
+                        print(timestamp(), f'\"{name_to_deop}\" is no more an admin')
+                        log(f'\"{name_to_deop}\" is no more an admin')
                         broadcast(f'\"{name_to_deop}\" is no more an admin!')
                     else:
                         client.send(ec(f'Cannot remove \"{name_to_deop}\" as an admin'))
+                else:
+                    client.send(ec('Refused!'))
+
+            elif msg.startswith('SETBOT'):
+                if nicknames[clients.index(client)] in servers:
+                    name_to_bot = msg[7:]
+                    with open("unblocked.txt", "r") as f:
+                        lines = f.readlines()
+                    if name_to_bot+'\n' not in lines:
+                        unblocked.append(name_to_bot)
+                        with open('unblocked.txt','a') as f:
+                            f.write(f'{name_to_bot}\n')
+                        print(timestamp(), f'\"{name_to_bot}\" is now unblocked')
+                        log(f'\"{name_to_bot}\" is now unblocked')
+                        client.send(ec(f'\"{name_to_bot}\" unblocked'))
+                    else:
+                        client.send(ec(f'\"{name_to_bot}\" is already unblocked'))
+                else:
+                    client.send(ec('Refused!'))
+
+            elif msg.startswith('DELBOT'):
+                if nicknames[clients.index(client)] in servers:
+                    name_to_unbot = msg[7:]
+                    with open("unblocked.txt", "r") as f:
+                        lines = f.readlines()
+                    if name_to_unbot+'\n' in lines and bool(lines):
+                        unblocked.remove(name_to_unbot)
+                        with open("unblocked.txt", "w") as f:
+                            for line in lines:
+                                if line.strip() != name_to_unbot:
+                                    f.write(line)
+                        print(timestamp(), f'\"{name_to_unbot}\" is no more unblocked')
+                        log(f'\"{name_to_unbot}\" is no more unblocked')
+                        client.send(ec(f'\"{name_to_unbot}\" no more unblocked'))
+                    else:
+                        client.send(ec(f'Cannot remove \"{name_to_unbot}\" from unblocked users'))
                 else:
                     client.send(ec('Refused!'))
 
@@ -589,7 +677,7 @@ open: {str(server_open).lower()}
                 else:
                     if ":" in msg:
                         msglist = msg.split(":", 1)
-                        name_to_test = msglist[0][2:].strip()
+                        name_to_test = msglist[0].replace(">", "").strip()
                         if name_to_test == nicknames[clients.index(client)]:
                             broadcast(msg)
                             log(msg)
@@ -604,9 +692,13 @@ open: {str(server_open).lower()}
                                 broadcast(f'<<< \"{name_to_kick}\" was kicked!')
                     else:
                         client.send(ec('Invalid message!'))
-        except:
+        except Exception as exc:
             # Removing And Closing Clients
             if client in clients:
+                if bool(exc):
+                    print(exc)
+                else:
+                    traceback.print_exc()
                 index = clients.index(client)
                 clients.remove(client)
                 client.close()
@@ -628,10 +720,10 @@ def receive():
     def ec(string):
         if tls_key != bytes(0):
             string = myencrypt(string, tls_key)
-            string = string.encode('utf-8')
+            string = string.encode('utf-8', 'replace')
             return string
         else:
-            return string.encode('utf-8')
+            return string.encode('utf-8', 'replace')
 
     def dc(token):
         if tls_key != bytes(0):
@@ -646,17 +738,17 @@ def receive():
             print(timestamp(), "Connected with {}".format(str(address)))
             log("Connected with {}".format(str(address)))
 
-            client.send('CLTKEY'.encode('utf-8'))
-            clt_key = client.recv(2048).decode('utf-8')
-            request = client.recv(1024).decode('utf-8')
+            client.send('CLTKEY'.encode('utf-8', 'replace'))
+            clt_key = client.recv(2048).decode('utf-8', 'replace')
+            request = client.recv(1024).decode('utf-8', 'replace')
             if request == 'SRVKEY':
                 srv = DiffieHellman()
-                client.send(str(srv.publicKey).encode('utf-8'))
+                client.send(str(srv.publicKey).encode('utf-8', 'replace'))
                 srv.generateKey(int(clt_key))
                 tls_key = srv.getKey()
 
                 if tls_key != bytes(0):
-                    dig = hashlib.sha256(bytes(str(srv.publicKey).encode('utf-8')))
+                    dig = hashlib.sha256(bytes(str(srv.publicKey).encode('utf-8', 'replace')))
                     salt = bytes(dig.digest()[:32])
                     kdf = PBKDF2HMAC(
                     algorithm=hashes.SHA512(),
@@ -667,22 +759,22 @@ def receive():
                     tls_key = base64.urlsafe_b64encode(kdf.derive(tls_key))
 
                     # Validate encryption
-                    verrequest = client.recv(1024).decode('utf-8')
+                    verrequest = client.recv(1024).decode('utf-8', 'replace')
                     if verrequest == 'VERTLS':
                         secureRandom = secrets.SystemRandom()
                         characters = string.digits
                         vercode = int(''.join(secureRandom.choice(characters) for i in range(6)))
                         client.send(ec(str(vercode)))
                         vercode *= vercode
-                        clt_response = dc(client.recv(1024).decode('utf-8'))
+                        clt_response = dc(client.recv(1024).decode('utf-8', 'replace'))
                         if clt_response == str(vercode):
                             print(timestamp(), f'Encrypted tunnel established with {str(address)}')
                             log(f'Encrypted tunnel established with {str(address)}')
-                            client.send(ec('Encrypted tunnel active!'))
+                            client.send('Encrypted tunnel active!'.encode('utf-8', 'replace'))
                         else:
                             print(timestamp(), f'Failed to create an encrypted tunnel with {str(address)}')
                             log(f'Failed to create an encrypted tunnel with {str(address)}')
-                            client.send(ec('Failed to create an encrypted tunnel!'))
+                            client.send('Failed to create an encrypted tunnel!'.encode('utf-8', 'replace'))
                     else:
                         client.send(ec('REFUSE'))
                         client.close()
@@ -691,7 +783,7 @@ def receive():
                         continue
  
             client.send(ec('CMD'))
-            command = dc(client.recv(1024).decode('utf-8'))
+            command = dc(client.recv(1024).decode('utf-8', 'replace'))
             
             def otp (client, email):
                 email_addr = generate_email_address(size=10)
@@ -789,6 +881,7 @@ def receive():
                         continue
 
                 except:
+                    traceback.print_exc()
                     client.send(ec('CLOSED'))
                     client.close()
                     print(timestamp(), f'Refused {str(address)}: error')
@@ -856,6 +949,7 @@ def receive():
                         continue
 
                 except:
+                    traceback.print_exc()
                     client.send(ec('CLOSED'))
                     client.close()
                     print(timestamp(), f'Refused {str(address)}: error')
@@ -864,7 +958,7 @@ def receive():
 
             # Request And Store Nickname
             client.send(ec('NICK'))
-            nickname = dc(client.recv(1024).decode('utf-8'))
+            nickname = dc(client.recv(1024).decode('utf-8', 'replace'))
             
             # Clean nickname
             nickname = re.sub(r"[^a-zA-Z0-9 _àèìòù+&£$€@#]","",nickname)
@@ -901,7 +995,7 @@ def receive():
 
             if nickname == "SERVER" or nickname == "ADMIN" or auth:
                 client.send(ec('PASS'))
-                password = dc(client.recv(1024).decode('utf-8'))
+                password = dc(client.recv(1024).decode('utf-8', 'replace'))
                 password = hashpwd(password, 100000)
 
                 if (nickname == "SERVER" and password != serverpwd) or (nickname == "ADMIN" and password != adminpwd):
@@ -939,6 +1033,7 @@ def receive():
         except:
             # Removing And Closing Clients
             if client in clients:
+                traceback.print_exc()
                 index = clients.index(client)
                 clients.remove(client)
                 client.close()
