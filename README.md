@@ -3,7 +3,7 @@
 - create your own chat server using the [server](MSCHAT/server)
 - connect to an existing server using the [client](MSCHAT/client.exe)
 
-Source code for the project can be found [here](MSCHAT/src). Note that I've used a [custom version](MSCHAT/src/pydispo.py) of the [pydispo] (https://github.com/aakash30jan/pydispo) module.
+Source code for the project can be found [here](MSCHAT/src). Note that I've used a [custom version](MSCHAT/src/pydispo.py) of the [pydispo](https://github.com/aakash30jan/pydispo) module.
 
 ## Encryption
 Messages sent using **mschat** are crypted using:
