@@ -1,15 +1,20 @@
-# mschat (guide needs to be updated to 1.4.0)
+# mschat
+
 **mschat** is a simple command-line application where you can:
 - create your own chat server using the [server](MSCHAT/server)
 - connect to an existing server using the [client](MSCHAT/client.exe)
 
 Source code for the project can be found [here](MSCHAT/src). Note that I've used a [custom version](MSCHAT/src/pydispo.py) of the [pydispo](https://github.com/aakash30jan/pydispo) module.
 
+> NOTE: this guide needs an update (new functions added).
+
 ## Encryption
 Messages sent using **mschat** are crypted using:
 1. [Diffie-Hellman key exchange method](https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange) to generate a numeric key shared by server and client
 2. [PBKDF2 key derivation function](https://en.wikipedia.org/wiki/PBKDF2) to get a stronger key that can be used with encryption algorithms
 3. [Fernet](https://cryptography.io/en/latest/fernet/) to encrypt the message using the derived key
+
+> DISCLAIMER: encryption effectiveness is not guaranteed by any official standard.
 
 ## GUI (1.4.0+)
 Starting from version 1.4.0 the application is provided with a simple graphical interface with useful features:
@@ -62,6 +67,9 @@ As a user:
 2. insert server's address
 3. type `/register` when asked
 4. complete with your data
+
+> NOTE: do not reuse passwords, since the host can see your email adress and (encrypted) data. He can't read your password but it's always better to use a different one for every service and site.
+
 ```
 Enter server's IP adress (default = 127.0.0.1) -> 123.45.67.89
 Enter server's port (default = 55555) ->
@@ -101,8 +109,13 @@ To delete your profile you have to type `/delete` instead of `/register`
 ## How to start a server
 1. open your server 
 2. insert your private IP:
-    - from the command prompt type `ipconfig`, your private IP should be something like 192.168.1.5
+    - from the command prompt type `ipconfig`, your private IP should be something like 192.168.1.5, this adress can be used for connecting computers in your network  
     - type 127.0.0.1 if you are using a service like [ngrok](https://ngrok.com/) or you want to connect only from your machine (e.g. for testing or management)
+
+> TIP: to access your server from the internet you may need to change your router's settings.
+
+> NOTE: sharing your public IP adress on the internet is not (generally) a good idea, it's recommended to use a [DNS server](https://www.duckdns.org/).
+
 ```
 Enter your private IP (default = 127.0.0.1) -> 192.168.1.5
 Server started! Your public IP is: 123.45.67.89:55555
