@@ -1,1 +1,8 @@
-server.exe autoload.txt 
+server.exe
+admins.txt
+autoload.txt
+blacklist.txt
+login_details.txt
+serverlog.txt
+settings.txt
+unblocked.txt
