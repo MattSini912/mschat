@@ -4,3 +4,4 @@
 - Added GUI
 - Bot support (I'm working on a dedicated script)
 - Bux fixes and improvements
+- Improved Unicode support
