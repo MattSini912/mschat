@@ -152,4 +152,4 @@ MSCHAT
         server.exe/py
         [server files]
 ```
-    
+> INFO: donut.exe is a ASCII 3D spinning donut script, part of a small game included in this app, you can delete it if you don't want it.     
