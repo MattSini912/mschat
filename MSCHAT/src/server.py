@@ -17,6 +17,21 @@ import traceback
 import secrets
 import string
 
+app_version = "1.5.0"
+compatible_versions = ["1.5.0"]
+versions_list = []
+try:
+    url_path = 'https://raw.githubusercontent.com/MattSini912/mschat/main/MSCHAT/server/'
+    versions = requests.get(url_path + 'VERSIONS')
+    versions_list = versions.text.split()
+    if app_version in versions_list:
+        compatible_versions = versions_list[:]
+        print("Version " + app_version)
+    else:
+        print("Version " + app_version + " - New version available!")
+except:
+    print("Version " + app_version)
+
 autoload = False
 dolog = True
 auth = False
@@ -28,11 +43,21 @@ def timestamp():
     time_string = time.strftime("%Y/%m/%d %H:%M:%S", time_tuple)
     return ("[" + time_string + "]")
 
+def clear_name(name):
+    name = re.sub(r"[^a-zA-Z0-9 _àèìòù+&£$€@#]","",name)
+    name = name.strip()
+    name = name[:min(len(name), 20)]
+    name = name.strip()
+    name = name.replace(' ', '_')
+    return name
+
+
 # Server log
 def log(text=""):
     global dolog
     try:
         if dolog and bool(text):
+            text = bytes(text, 'ansi', 'replace').decode('ansi', 'ignore')
             with open('serverlog.txt','a') as f:
                 f.write(f'{timestamp()} {text}\n')
     except UnicodeEncodeError:
@@ -104,6 +129,7 @@ print("Detected private IP:", host_ip)
 print(70 * "-")
 
 auto_address = False
+auto_port = False
 with open("autoload.txt", "r") as f:
     log(70 * "-")
     try:
@@ -124,18 +150,33 @@ with open("autoload.txt", "r") as f:
             auto_address = False
         if auto_address == "Auto" or auto_address == "True":
             auto_address = host_ip
+
+        # Load address in autoload.txt
+        temp = lines[2].split(":",1)
+        auto_port = temp[1].strip()
+        if auto_port == "None" or auto_port == "False" or auto_port == "" or auto_port.isspace():
+            auto_port = False
+        if auto_port == "Auto" or auto_port == "True":
+            auto_port = 55555
+
     except:
         pass
 
 # Connection Data
 if auto_address:
     host = auto_address
-    print("AUTOLOAD: detected address: " + auto_address)
+    if auto_port:
+        print("AUTOLOAD: detected address and port: " + auto_address + ":" + str(auto_port))
+        port = int(auto_port)
+    else:
+        print("AUTOLOAD: detected address: " + auto_address)
+        port = 55555
 else:
     host = input("Enter your private IP (default = 127.0.0.1) -> ")
+    port = 55555
 if host == "" or host.isspace():
     host = '127.0.0.1'
-port = 55555
+
 
 # Starting Server
 server = socket(AF_INET, SOCK_STREAM)
@@ -203,6 +244,7 @@ def broadcast(message, clt=False):
                 index = clients.index(client)
                 tls_key = keys[index]
                 crypted = myencrypt(message, tls_key)
+                #print(nicknames[clients.index(client)], str(tls_key)[-10:], message[-10:], str(crypted)[-10:]) ###debug
                 if client in clients:
                     client.send(crypted.encode('utf-8', 'replace'))
             except:
@@ -239,11 +281,27 @@ def handle(client, tls_key=bytes(0)):
         else:
             return token
 
+    def kick_user(name):
+            if name in nicknames:
+                name_index = nicknames.index(name)
+                client_to_kick = clients[name_index]
+                clients.remove(client_to_kick)
+                nicknames.remove(name)
+                key_to_remove = keys[name_index]
+                keys.remove(key_to_remove)
+                client_to_kick.send(myencrypt('KCK', key_to_remove).encode('utf-8', 'replace'))
+                client_to_kick.close()
+                return True
+            else:
+                return False
+
     while True:
         try:
             # Broadcasting Messages
             message = client.recv(8192)
             msg = dc(message.decode('utf-8', 'replace'))
+
+            sender = nicknames[clients.index(client)]
 
             #Anti-flood filter
             new_ts = time.time()
@@ -253,10 +311,10 @@ def handle(client, tls_key=bytes(0)):
             message_ts[3] = message_ts [4]
             message_ts[4] = message_ts [5]
             message_ts[5] = new_ts
-            if new_ts - message_ts[0] <= 5 and nicknames[clients.index(client)] not in unblocked:
+            if new_ts - message_ts[0] <= 5 and sender not in unblocked:
                 flood_count += 1
-                print(timestamp(), f'\"{nicknames[clients.index(client)]}\" blocked for: flooding ({flood_count*30} s)')
-                log(f'\"{nicknames[clients.index(client)]}\" blocked for: flooding ({flood_count*30} s)')
+                print(timestamp(), f'\"{sender}\" blocked for: flooding ({flood_count*30} s)')
+                log(f'\"{sender}\" blocked for: flooding ({flood_count*30} s)')
                 client.send(ec(f"Blocked for flooding! ({flood_count*30} seconds)"))
                 time.sleep(flood_count*30)
                 continue
@@ -274,7 +332,7 @@ def handle(client, tls_key=bytes(0)):
                 client.send(ec(adminlist))
 
             elif msg.startswith('UBLIST'):
-                if nicknames[clients.index(client)] in admins:
+                if sender in admins:
                     botlist = f"UNBLOCKED USERS ({len(unblocked)}): "
                     for bot in unblocked:
                         botlist = botlist + bot + ", "
@@ -283,7 +341,7 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
             
             elif msg.startswith('MTLIST'):
-                if nicknames[clients.index(client)] in admins:
+                if sender in admins:
                     mutelist = f"MUTED USERS ({len(muted)}): "
                     for mute in muted:
                         mutelist = mutelist + mute + ", "
@@ -292,7 +350,7 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('BLACKLIST'):
-                if nicknames[clients.index(client)] in admins:
+                if sender in admins:
                     with open("blacklist.txt", "r") as f:
                             lines = f.readlines()
                     blist = f"BLACKLISTED USERS ({len(lines)}): "
@@ -319,19 +377,19 @@ def handle(client, tls_key=bytes(0)):
                 if name_to_dm in nicknames:
                     target_index = nicknames.index(name_to_dm)
                     client_to_dm = clients[target_index]
-                    #client_to_dm.send(ec(f"(\"{nicknames[clients.index(client)]}\" -> YOU): {telegram}"))
-                    broadcast((f"(\"{nicknames[clients.index(client)]}\" -> YOU): {telegram}"), client_to_dm)
+                    #client_to_dm.send(ec(f"(\"{sender}\" -> YOU): {telegram}"))
+                    broadcast((f"(\"{sender}\" -> YOU): {telegram}"), client_to_dm)
                     client.send(ec(f"(YOU -> \"{name_to_dm}\"): {telegram}"))
-                    log(f"(\"{nicknames[clients.index(client)]}\" -> \"{name_to_dm}\"): {telegram}")
+                    log(f"(\"{sender}\" -> \"{name_to_dm}\"): {telegram}")
                 else:
                     client.send(ec('Refused!'))
 
             elif msg.startswith('OP'):
-                if nicknames[clients.index(client)] in servers:
-                    name_to_op = msg[3:]
+                if sender in servers:
+                    name_to_op = clear_name(msg[3:])
                     with open("admins.txt", "r") as f:
                         lines = f.readlines()
-                    if name_to_op+'\n' not in lines:
+                    if name_to_op+'\n' not in lines and name_to_op not in admins and name_to_op!="":
                         admins.append(name_to_op)
                         with open('admins.txt','a') as f:
                             f.write(f'{name_to_op}\n')
@@ -344,7 +402,7 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('DEOP'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     name_to_deop = msg[5:]
                     with open("admins.txt", "r") as f:
                         lines = f.readlines()
@@ -363,11 +421,11 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SETBOT'):
-                if nicknames[clients.index(client)] in servers:
-                    name_to_bot = msg[7:]
+                if sender in servers:
+                    name_to_bot = clear_name(msg[7:])
                     with open("unblocked.txt", "r") as f:
                         lines = f.readlines()
-                    if name_to_bot+'\n' not in lines:
+                    if name_to_bot+'\n' not in lines and name_to_bot not in unblocked and name_to_bot!="":
                         unblocked.append(name_to_bot)
                         with open('unblocked.txt','a') as f:
                             f.write(f'{name_to_bot}\n')
@@ -380,7 +438,7 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('DELBOT'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     name_to_unbot = msg[7:]
                     with open("unblocked.txt", "r") as f:
                         lines = f.readlines()
@@ -399,9 +457,9 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('MUTE'):
-                if nicknames[clients.index(client)] in admins:
-                    name_to_mute = msg[5:]
-                    if name_to_mute not in muted and name_to_mute not in admins:
+                if sender in admins:
+                    name_to_mute = clear_name(msg[5:])
+                    if name_to_mute not in muted and name_to_mute not in admins and name_to_mute!="":
                         muted.append(name_to_mute)
                         print(timestamp(), f'\"{name_to_mute}\" muted')
                         log(f'\"{name_to_mute}\" muted')
@@ -412,9 +470,9 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('UNMUTE'):
-                if nicknames[clients.index(client)] in admins:
+                if sender in admins:
                     name_to_unmute = msg[7:]
-                    if name_to_unmute in muted and bool(muted):
+                    if name_to_unmute in muted:
                         muted.remove(name_to_mute)
                         print(timestamp(), f'\"{name_to_unmute}\" unmuted')
                         log(f'\"{name_to_unmute}\" unmuted')
@@ -425,21 +483,20 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('KICK'):
-                if nicknames[clients.index(client)] in admins:
+                if sender in admins:
                     name_to_kick = msg[5:]
-                    if kick_user(name_to_kick):
-                        print(timestamp(), f'\"{name_to_kick}\" kicked')
-                        log(f'\"{name_to_kick}\" kicked')
-                        broadcast(f'<<< \"{name_to_kick}\" was kicked by an admin!')
+                    if name_to_kick not in admins:
+                        if kick_user(name_to_kick):
+                            print(timestamp(), f'\"{name_to_kick}\" kicked')
+                            log(f'\"{name_to_kick}\" kicked')
+                            broadcast(f'<<< \"{name_to_kick}\" was kicked by an admin!')
                 else:
                     client.send(ec('Refused!'))
                     
             elif msg.startswith('BAN'):
-                if nicknames[clients.index(client)] in admins:
-                    name_to_ban = msg[4:]
-                    with open("admins.txt", "r") as f:
-                        lines = f.readlines()
-                    if name_to_ban+'\n' not in lines:
+                if sender in admins:
+                    name_to_ban = clear_name(msg[4:])
+                    if name_to_ban not in admins and name_to_ban!="":
                         if kick_user(name_to_ban):
                             broadcast(f'<<< \"{name_to_ban}\" was kicked by an admin!')
                         with open('blacklist.txt','a') as f:
@@ -451,7 +508,7 @@ def handle(client, tls_key=bytes(0)):
                     client.send(ec('Refused!'))
 
             elif msg.startswith('UNBAN'):
-                if nicknames[clients.index(client)] in admins:
+                if sender in admins:
                     name_to_unban = msg[6:]
                     with open("blacklist.txt", "r") as f:
                         lines = f.readlines()
@@ -471,7 +528,7 @@ def handle(client, tls_key=bytes(0)):
             #############################################################
                     
             elif msg.startswith('SETGET'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     client.send(ec(f'''
 
 SERVER SETTINGS:
@@ -487,7 +544,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SETDEF'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     default("ALL")
                     print(timestamp(), 'Settings restored to default')
                     log('Settings restored to default')
@@ -496,7 +553,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SETLOAD'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     setload()
                     print(timestamp(), 'Settings loaded from file')
                     log('Settings loaded from file')
@@ -505,7 +562,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SETSAVE'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     with open('settings.txt','w') as f:
                         f.write(f'dolog:{dolog}\n')
                         f.write(f'auth:{auth}\n')
@@ -517,7 +574,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SETDEL'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     with open('settings.txt','w') as f:
                         f.write(f'dolog:{default("dolog",True)}\n')
                         f.write(f'auth:{default("auth",True)}\n')
@@ -529,7 +586,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SETALS'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     choice = msg[7:]
                     if choice.lower() == "true":
                         autoload = True
@@ -545,7 +602,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SRVLOG'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     choice = msg[7:]
                     if choice.lower() == "true":
                         dolog = True
@@ -561,7 +618,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SRVATH'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     choice = msg[7:]
                     if choice.lower() == "true":
                         auth = True
@@ -576,7 +633,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('SRVOPN'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     choice = msg[7:]
                     if choice.lower() == "true":
                         server_open = True
@@ -591,7 +648,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('USERS'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     with open("login_details.txt", "r") as f:
                         lines = f.readlines()
                     registeredlist = f"USERS REGISTERED ({len(lines)}): "
@@ -604,7 +661,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
             
             elif msg.startswith('REGSTR'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     text = msg[7:]
                     if ";" not in text:
                         client.send(ec('Invalid!'))
@@ -616,14 +673,10 @@ open: {str(server_open).lower()}
                     name_to_reg = textlist[0].strip()
                     pwd_to_reg = textlist[1].strip()
 
+                    name_to_reg = clear_name(name_to_reg)
                     if name_to_reg == "" or name_to_reg.isspace() or name_to_reg == ":":
                         client.send(ec('Invalid!'))
                         continue
-                    name_to_reg = re.sub(r"[^a-zA-Z0-9 _àèìòù+&£$€@#]","",name_to_reg)
-                    name_to_reg = name_to_reg.strip()
-                    name_to_reg = name_to_reg[:min(len(name_to_reg), 20)]
-                    name_to_reg = name_to_reg.strip()
-                    name_to_reg = name_to_reg.replace(' ', '_')
 
                     if pwd_to_reg == "" or pwd_to_reg.isspace() or pwd_to_reg == ":" or len(pwd_to_reg) < 4  or len(pwd_to_reg) > 20:
                         client.send(ec('Invalid!'))
@@ -649,7 +702,7 @@ open: {str(server_open).lower()}
                     client.send(ec('Refused!'))
 
             elif msg.startswith('DELPRF'):
-                if nicknames[clients.index(client)] in servers:
+                if sender in servers:
                     name_to_del = msg[7:].strip()
                     test=False
                     with open("login_details.txt", "r") as f:
@@ -672,17 +725,17 @@ open: {str(server_open).lower()}
             #################################################################
                     
             else:
-                if nicknames[clients.index(client)] in muted:
+                if sender in muted:
                     client.send(ec('You are muted!'))
                 else:
                     if ":" in msg:
                         msglist = msg.split(":", 1)
                         name_to_test = msglist[0].replace(">", "").strip()
-                        if name_to_test == nicknames[clients.index(client)]:
+                        if name_to_test == sender:
                             broadcast(msg)
                             log(msg)
                         else:
-                            name_to_kick = nicknames[clients.index(client)]
+                            name_to_kick = sender
                             print(timestamp(), f'\"{name_to_kick}\" tried to send a message with a different nickname')
                             log(f'\"{name_to_kick}\" tried to send a message with a different nickname')
                             client.send(ec('Message refused!'))
@@ -717,6 +770,7 @@ def receive():
     global server_open
     global keys
     tls_key = bytes(0)
+
     def ec(string):
         if tls_key != bytes(0):
             string = myencrypt(string, tls_key)
@@ -731,6 +785,7 @@ def receive():
             return token
         else:
             return token
+
     while True:
         try:
             # Accept Connection
@@ -738,6 +793,15 @@ def receive():
             print(timestamp(), "Connected with {}".format(str(address)))
             log("Connected with {}".format(str(address)))
 
+            client.send('ASKVER'.encode('utf-8', 'replace'))
+            client_version = client.recv(1024).decode('utf-8', 'replace')
+            if client_version not in compatible_versions:
+                client.send(('OLDVER').encode('utf-8', 'replace'))
+                client.close()
+                print(timestamp(), f'Refused {str(address)}: incompatible version ({client_version})')
+                log(f'Refused {str(address)}: incompatible version ({client_version})')
+                continue
+            
             client.send('CLTKEY'.encode('utf-8', 'replace'))
             clt_key = client.recv(2048).decode('utf-8', 'replace')
             request = client.recv(1024).decode('utf-8', 'replace')
@@ -835,20 +899,15 @@ def receive():
                     pwd_to_reg = textlist[2].strip()
                     pwd_to_reg = hashpwd(pwd_to_reg, 100000)
 
+                    name_to_reg = clear_name(name_to_reg)
                     if name_to_reg == "" or name_to_reg.isspace() or name_to_reg == ":":
                         client.send(ec('REFUSE'))
                         client.close()
                         print(timestamp(), f'Refused {str(address)}: invalid request')
                         log(f'Refused {str(address)}: invalid request')
                         continue
-                    name_to_reg = re.sub(r"[^a-zA-Z0-9 _àèìòù+&£$€@#]","",name_to_reg)
-                    name_to_reg = name_to_reg.strip()
-                    name_to_reg = name_to_reg[:min(len(name_to_reg), 20)]
-                    name_to_reg = name_to_reg.strip()
-                    name_to_reg = name_to_reg.replace(' ', '_')
 
-                    mail_to_reg = re.sub(r"[^a-zA-Z0-9_~+@\.\-]","",mail_to_reg)
-                    mail_to_reg = mail_to_reg.strip()              
+                    mail_to_reg = re.sub(r"[^a-zA-Z0-9_~+@\.\-]","",mail_to_reg).strip()              
                     
                     test=False
                     with open("login_details.txt", "r") as f:
@@ -899,16 +958,14 @@ def receive():
                         continue
                     print(timestamp(), f'Pending {str(address)}: user is trying to delete account')
                     log(f'Pending {str(address)}: user is trying to delete account')
-                    mail_to_del = command[7:]
-                    mail_to_del = mail_to_del.strip()
+                    mail_to_del = command[7:].strip()
                     if mail_to_del == "" or mail_to_del.isspace() or mail_to_del == ":" or mail_to_del == "NONE":
                         client.send(ec('REFUSE'))
                         client.close()
                         print(timestamp(), f'Refused {str(address)}: invalid request')
                         log(f'Refused {str(address)}: invalid request')
                         continue
-                    mail_to_del = re.sub(r"[^a-zA-Z0-9_~+@\.\-]","",mail_to_del)
-                    mail_to_del = mail_to_del.strip()              
+                    mail_to_del = re.sub(r"[^a-zA-Z0-9_~+@\.\-]","",mail_to_del).strip()              
                     
                     test=False
                     with open("login_details.txt", "r") as f:
@@ -961,13 +1018,9 @@ def receive():
             nickname = dc(client.recv(1024).decode('utf-8', 'replace'))
             
             # Clean nickname
-            nickname = re.sub(r"[^a-zA-Z0-9 _àèìòù+&£$€@#]","",nickname)
-            nickname = nickname.strip()
+            nickname = clear_name(nickname)
             if nickname == "" or nickname.isspace() or nickname == ":":
                 nickname = str(random.randint(10000, 99999))
-            nickname = nickname[:min(len(nickname), 20)]
-            nickname = nickname.strip()
-            nickname = nickname.replace(' ', '_')
 
             with open('blacklist.txt','r') as f:
                 banlist = f.readlines()
@@ -1020,15 +1073,24 @@ def receive():
                         client.close()
                         continue
 
+
+            client.send(ec('CONNECTED'))
+
             nicknames.append(nickname)
             clients.append(client)
             keys.append(tls_key)
+
+            time.sleep(1)
 
             # Print And Broadcast Nickname
             print(timestamp(), f"Accepted {str(address)}: user \"{nickname}\" joined")
             log(f"Accepted {str(address)}: user \"{nickname}\" joined")
             broadcast(f">>> \"{nickname}\" joined!")
             client.send(ec(f'Connected to server as \"{nickname}\"! {len(nicknames)} users online. List of commands: /help'))
+
+            # Start Handling Thread For Client
+            thread = threading.Thread(target=handle, args=(client, tls_key,))
+            thread.start()
 
         except:
             # Removing And Closing Clients
@@ -1046,23 +1108,6 @@ def receive():
                 keys.remove(tls_key)
                 break
         
-        # Start Handling Thread For Client
-        thread = threading.Thread(target=handle, args=(client, tls_key,))
-        thread.start()
-
-def kick_user(name):
-    if name in nicknames:
-        name_index = nicknames.index(name)
-        client_to_kick = clients[name_index]
-        clients.remove(client_to_kick)
-        client_to_kick.close()
-        nicknames.remove(name)
-        tls_key = keys[name_index]
-        keys.remove(tls_key)
-        return True
-    else:
-        return False
-
-
 print("Server is listening...")
+print()
 receive()
