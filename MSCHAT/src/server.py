@@ -17,8 +17,8 @@ import traceback
 import secrets
 import string
 
-app_version = "1.5.0"
-compatible_versions = ["1.5.0"]
+app_version = "1.5.1"
+compatible_versions = ["1.5.1"]
 versions_list = []
 try:
     url_path = 'https://raw.githubusercontent.com/MattSini912/mschat/main/MSCHAT/server/'
@@ -33,9 +33,13 @@ except:
     print("Version " + app_version)
 
 autoload = False
+auto_address = False
+auto_port = False
+bypass_version_control = False
 dolog = True
 auth = False
-server_open = False
+server_open = True
+flood_block = True
 
 # Get timestamp
 def timestamp():
@@ -82,14 +86,20 @@ def default(option, status=False):
     global auth
     if option == "auth" or ALL:
         if status:
-            return True
-        auth = True
+            return False
+        auth = False
 
     global server_open
     if option == "server_open" or ALL:
         if status:
-            return False
-        server_open = False
+            return True
+        server_open = True
+
+    global flood_block
+    if option == "flood_block" or ALL:
+        if status:
+            return True
+        flood_block = True
 
 def setload():
     with open("settings.txt", "r") as f:
@@ -97,15 +107,23 @@ def setload():
     for line in lines:
         try:
             temp = (line.strip()).split(":",1)
+
             global dolog
             if temp[0] == "dolog":
                 dolog = eval(temp[1])
+
             global auth
             if temp[0] == "auth":
                 auth = eval(temp[1])
+
             global server_open
             if temp[0] == "server_open":
-                    server_open = eval(temp[1])
+                server_open = eval(temp[1])
+
+            global flood_block
+            if temp[0] == "flood_block":
+                flood_block = eval(temp[1])
+
         except:
             traceback.print_exc()
             continue   
@@ -123,13 +141,19 @@ else:
 
 # Detect network
 host_name = gethostname()
+print("Hostname:", host_name)
 host_ip = gethostbyname(host_name)
-print("Detected hostname:", host_name)
-print("Detected private IP:", host_ip)
+print("Private IP:", host_ip)
+
+try:
+    ip_data = requests.get(f"http://ip-api.com/json/").json()
+    print("Public IP:", ip_data["query"])
+    print("Network location: " + ip_data["city"] + ", " + ip_data["country"])
+except:
+    pass
+
 print(70 * "-")
 
-auto_address = False
-auto_port = False
 with open("autoload.txt", "r") as f:
     log(70 * "-")
     try:
@@ -159,6 +183,13 @@ with open("autoload.txt", "r") as f:
         if auto_port == "Auto" or auto_port == "True":
             auto_port = 55555
 
+        temp = lines[3].split(":",1)
+        choice = eval(temp[1].strip())
+        if choice:
+            bypass_version_control = True
+            print(timestamp(), 'AUTOLOAD: version control bypass is enabled')
+            log('AUTOLOAD: version control bypass is enabled')
+            
     except:
         pass
 
@@ -166,10 +197,12 @@ with open("autoload.txt", "r") as f:
 if auto_address:
     host = auto_address
     if auto_port:
-        print("AUTOLOAD: detected address and port: " + auto_address + ":" + str(auto_port))
+        print(timestamp(), "AUTOLOAD: detected address and port: " + auto_address + ":" + str(auto_port))
+        log("AUTOLOAD: detected address and port: " + auto_address + ":" + str(auto_port))
         port = int(auto_port)
     else:
-        print("AUTOLOAD: detected address: " + auto_address)
+        print(timestamp(), "AUTOLOAD: detected address: " + auto_address)
+        log("AUTOLOAD: detected address: " + auto_address)
         port = 55555
 else:
     host = input("Enter your private IP (default = 127.0.0.1) -> ")
@@ -182,9 +215,13 @@ if host == "" or host.isspace():
 server = socket(AF_INET, SOCK_STREAM)
 server.bind((host, port))
 server.listen()
- 
-myip = get('https://api.ipify.org').text
-print("Server started! Your public IP is: " + myip + ":" + str(port))
+
+myip = "?"
+try: 
+    myip = get('https://api.ipify.org').text
+except:
+    pass
+print(timestamp(), "Server started! Your public IP is: " + myip + ":" + str(port) + "\n")
 log("Server started! Your public IP is: " + myip + ":" + str(port))
 
 # Lists For Clients and Their Nicknames
@@ -206,7 +243,9 @@ with open("unblocked.txt", "r") as f:
     for line in lines:
         unblocked.append(line.strip())
         
-def hashpwd(password, times=1):
+def hashpwd(password, times=1, salt=""):
+    if salt != "":
+        password = salt + "$" + password
     for i in range(0,times):
         h = hashlib.new('sha256')
         h.update(password.encode('utf-8', 'replace'))
@@ -219,11 +258,11 @@ characters = string.ascii_letters + string.digits
 
 serverpwd = ''.join(secureRandom.choice(characters) for i in range(20))
 print("SERVER password is:", serverpwd)
-serverpwd = hashpwd(serverpwd, 200000)
+serverpwd = hashpwd(serverpwd, 200000, "SERVER")
 
 adminpwd = ''.join(secureRandom.choice(characters) for i in range(20))
 print("ADMIN password is:", adminpwd)
-adminpwd = hashpwd(adminpwd, 200000)
+adminpwd = hashpwd(adminpwd, 200000, "ADMIN")
 
 print("Type \"/settings help\" on terminal to show server's commands and settings")
 
@@ -261,6 +300,7 @@ def handle(client, tls_key=bytes(0)):
     global dolog
     global auth
     global server_open
+    global flood_block
     ###############################
     message_ts = [0, 0, 0, 0, 0, 0]
     flood_count = 0
@@ -311,7 +351,7 @@ def handle(client, tls_key=bytes(0)):
             message_ts[3] = message_ts [4]
             message_ts[4] = message_ts [5]
             message_ts[5] = new_ts
-            if new_ts - message_ts[0] <= 5 and sender not in unblocked:
+            if new_ts - message_ts[0] <= 5 and sender not in unblocked and flood_block:
                 flood_count += 1
                 print(timestamp(), f'\"{sender}\" blocked for: flooding ({flood_count*30} s)')
                 log(f'\"{sender}\" blocked for: flooding ({flood_count*30} s)')
@@ -534,10 +574,14 @@ def handle(client, tls_key=bytes(0)):
 SERVER SETTINGS:
 
 autoload: {str(autoload).lower()}
+auto_address: {str(auto_address).lower()}
+auto_port: {str(auto_port).lower()}
+bypass_version_control: {str(bypass_version_control).lower()}
 
 log: {str(dolog).lower()}
 auth: {str(auth).lower()}
 open: {str(server_open).lower()}
+flood_block: {str(flood_block).lower()}
 
 '''))
                 else:
@@ -567,6 +611,7 @@ open: {str(server_open).lower()}
                         f.write(f'dolog:{dolog}\n')
                         f.write(f'auth:{auth}\n')
                         f.write(f'server_open:{server_open}\n')
+                        f.write(f'flood_block:{flood_block}\n')
                     print(timestamp(), 'Settings saved on file')
                     log('Settings saved on file')
                     client.send(ec('Done!'))
@@ -579,6 +624,7 @@ open: {str(server_open).lower()}
                         f.write(f'dolog:{default("dolog",True)}\n')
                         f.write(f'auth:{default("auth",True)}\n')
                         f.write(f'server_open:{default("server_open",True)}\n')
+                        f.write(f'flood_block:{default("flood_block",True)}\n')
                     print(timestamp(), 'Settings deleted from file')
                     log('Settings deleted from file')
                     client.send(ec('Done!'))
@@ -595,6 +641,8 @@ open: {str(server_open).lower()}
                     with open('autoload.txt','w') as f:
                             f.write(f'autoload:{autoload}\n')
                             f.write(f'address:None\n')
+                            f.write(f'port:None\n')
+                            f.write(f'bypass_version_control:False\n')
                     print(timestamp(), f'Setting "autoload" to {autoload}')
                     log(f'Setting "autoload" to {autoload}')
                     client.send(ec(f'Set to {autoload}'))
@@ -647,6 +695,21 @@ open: {str(server_open).lower()}
                 else:
                     client.send(ec('Refused!'))
 
+            elif msg.startswith('SRVFLD'):
+                if sender in servers:
+                    choice = msg[7:]
+                    if choice.lower() == "true":
+                        flood_block = True
+                    elif choice.lower() == "false":
+                        flood_block = False
+                    else:
+                        default("flood_block")
+                    print(timestamp(), f'Setting "flood_block" to {flood_block}')
+                    log(f'Setting "flood_block" to {flood_block}')
+                    client.send(ec(f'Set to {flood_block}'))
+                else:
+                    client.send(ec('Refused!'))
+
             elif msg.startswith('USERS'):
                 if sender in servers:
                     with open("login_details.txt", "r") as f:
@@ -681,7 +744,7 @@ open: {str(server_open).lower()}
                     if pwd_to_reg == "" or pwd_to_reg.isspace() or pwd_to_reg == ":" or len(pwd_to_reg) < 4  or len(pwd_to_reg) > 20:
                         client.send(ec('Invalid!'))
                         continue                
-                    pwd_to_reg = hashpwd(pwd_to_reg, 200000)
+                    pwd_to_reg = hashpwd(pwd_to_reg, 200000, name_to_reg)
 
                     test=False
                     with open("login_details.txt", "r") as f:
@@ -795,7 +858,7 @@ def receive():
 
             client.send('ASKVER'.encode('utf-8', 'replace'))
             client_version = client.recv(1024).decode('utf-8', 'replace')
-            if client_version not in compatible_versions:
+            if client_version not in compatible_versions and not bypass_version_control:
                 client.send(('OLDVER').encode('utf-8', 'replace'))
                 client.close()
                 print(timestamp(), f'Refused {str(address)}: incompatible version ({client_version})')
@@ -1045,34 +1108,37 @@ def receive():
                 log(f"Refused {str(address)}: user \"{nickname}\" can't join because the server is closed")
                 client.close()
                 continue
-
-            if nickname == "SERVER" or nickname == "ADMIN" or auth:
+            
+            #Check if user is registered
+            test=False
+            db_pwd="?"
+            if (nickname != "SERVER" and nickname != "ADMIN"):
+                with open("login_details.txt", "r") as f:
+                    lines = f.readlines()
+                    for line in lines:
+                        if nickname+':' in line: 
+                            test=True
+                            db_pwd = (line.split(":", 2))[2].strip()
+            
+            if nickname == "SERVER" or nickname == "ADMIN" or auth or test:
                 client.send(ec('PASS'))
                 password = dc(client.recv(1024).decode('utf-8', 'replace'))
                 password = hashpwd(password, 100000)
 
-                if (nickname == "SERVER" and password != serverpwd) or (nickname == "ADMIN" and password != adminpwd):
-                    client.send(ec('REFUSE'))
-                    print(timestamp(), f"Refused {str(address)}: user \"{nickname}\" entered wrong password")
-                    log(f"Refused {str(address)}: user \"{nickname}\" entered wrong password")
-                    client.close()
-                    continue
-
-                if (nickname != "SERVER" and nickname != "ADMIN"):
-                    test=False
-                    with open("login_details.txt", "r") as f:
-                        lines = f.readlines()
-                        for line in lines:
-                            if nickname+':' in line:
-                                if (line.split(":", 2))[2].strip() == password:
-                                    test=True
-                    if not test:
+                if (nickname == "SERVER" or nickname == "ADMIN"):
+                    if (nickname == "SERVER" and password != serverpwd) or (nickname == "ADMIN" and password != adminpwd):
                         client.send(ec('REFUSE'))
-                        print(timestamp(), f"Refused {str(address)}: user \"{nickname}\" entered wrong nickname or password")
-                        log(f"Refused {str(address)}: user \"{nickname}\" entered wrong nickname or password")
+                        print(timestamp(), f"Refused {str(address)}: user \"{nickname}\" entered wrong password")
+                        log(f"Refused {str(address)}: user \"{nickname}\" entered wrong password")
                         client.close()
                         continue
 
+                elif ((auth or test) and db_pwd != password):
+                    client.send(ec('REFUSE'))
+                    print(timestamp(), f"Refused {str(address)}: user \"{nickname}\" entered wrong nickname or password")
+                    log(f"Refused {str(address)}: user \"{nickname}\" entered wrong nickname or password")
+                    client.close()
+                    continue
 
             client.send(ec('CONNECTED'))
 

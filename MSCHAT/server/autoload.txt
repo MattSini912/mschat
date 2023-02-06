@@ -1,3 +1,4 @@
-autoload:True
+autoload:False
 address:None
 port:None
+bypass_version_control:False

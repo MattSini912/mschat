@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 import subprocess
 from mycryptfunc import *
+from mydonut import *
 
 import PySimpleGUI as sg
 from queue import Queue
@@ -23,7 +24,9 @@ import pywintypes
 import win32con
 import win32gui
 
-client_version = "1.5.0" #<---------------------------------
+client_version = "1.5.1" #<---------------------------------
+
+os.system('cls')
 
 _r = "\033[1;31m" #red
 _g = "\033[1;32m" #green
@@ -82,7 +85,9 @@ if os.name == 'nt':
  
 random_logo()
 
-def hashpwd(password, times=1):
+def hashpwd(password, times=1, salt=""):
+    if salt != "":
+        password = salt + "$" + password
     for i in range(0,times):
         h = hashlib.new('sha256')
         h.update(password.encode('utf-8', 'replace'))
@@ -133,7 +138,7 @@ elif "register" in mode:
     mail_to_reg = re.sub(r"[^a-zA-Z0-9_~+@\.\-]","",mail_to_reg).strip()
 
     pwd_to_reg = input("Password -> ")
-    pwd_to_reg = hashpwd(pwd_to_reg, 100000)
+    pwd_to_reg = hashpwd(pwd_to_reg, 100000, name_to_reg)
 
     command = f'REGISTER {name_to_reg};{mail_to_reg};{pwd_to_reg}'
 
@@ -215,7 +220,7 @@ if operation == 'LOGIN':
 else:
     password = "isarandompass"
 
-password = hashpwd(password, 100000)
+password = hashpwd(password, 100000, nickname)
 
 # Connecting To Server
 print()
@@ -446,8 +451,9 @@ LIST OF COMMANDS:              |PERMISS.|DEFAULT|DESCRIPTION
 /settings erase                 (server)         Erase saved settings in settings.txt
 /settings autoload [true/false] (server)  false  Run "/settings load" when starting the server
 /log [true/false/default]       (server)  true   Enable server log
-/auth [true/false/default]      (server)  true   Force user's authentication
-/open [true/false/default]      (server)  false  Let users (other than SERVER and ADMIN) connect to your server
+/auth [true/false/default]      (server)  false  Force user's authentication
+/open [true/false/default]      (server)  true   Let users (other than SERVER and ADMIN) connect to your server
+/flood [true/false/default]     (server)  true   Block users that flood the chat with messages
 /users                          (server)         Print the list of registered users
 /register <user>; <password>    (server)         Register a user without authentication using <user> and <password>
 /deleteprofile <user>           (server)         Delete <user> without authentication
@@ -482,6 +488,9 @@ WARNING! EDITING OR DELETING FILES FROM "SERVER" FOLDER (e.g. "login_details.txt
 
             elif message[skip:].startswith('/open'):
                 client.send(ec(f'SRVOPN {message[skip+6:]}'))
+
+            elif message[skip:].startswith('/flood'):
+                client.send(ec(f'SRVFLD {message[skip+7:]}'))
 
             elif message[skip:].startswith('/users'):
                 client.send(ec('USERS'))
@@ -540,8 +549,8 @@ WARNING! EDITING OR DELETING FILES FROM "SERVER" FOLDER (e.g. "login_details.txt
             elif message[skip:].startswith('/donut'):
                 try:
                     if os.name == 'nt':
-                        defprint("Press \"ESC\" to close")
-                        os.system('cmd /c "start server/donut.exe"')
+                        defprint("Press \"ESC\" to close, press space to pause.")
+                        donut()
                 except:
                     defprint("No more donut for you!")
                 
@@ -609,14 +618,15 @@ def mygui(txtbox):
     # Create the Window
     sg.theme('DarkBlue17')
     layout = [
-        [sg.Text('MSChat by MattSini912'), sg.Button('Clear window'), sg.Button('Close window')],
-        [sg.Text(f'Connected with: {hostip}'), sg.Button('Online users')],
+        [sg.Text('MSChat by MattSini912'), sg.Button('Clear Window'), sg.Button('Close Window', button_color=('red'))],
+        [sg.Text(f'Connected with: {hostip}'), sg.Button('Online Users')],
         [sg.Text(f'Welcome back "{nickname}"! Check your terminal for more informations.')],
         [sg.Multiline(size=(60, 10), key='OUTPUT', disabled=True, autoscroll=True, expand_x=True, expand_y=True)],
         [sg.Button('C'), sg.Button('SEND'), sg.Button('/'), sg.Input(size=(45, 10), key='INPUT', expand_x=True)], 
         [sg.Button('HELP'), sg.Button('DM'), sg.Button('CREDITS')],  
         ]
-    window = sg.Window(f'MSChat: {nickname}', layout, size=(650, 500), resizable=True, font=('Consolas', 10)).Finalize()
+    window_icon = get_b64_icon()
+    window = sg.Window(f'MSChat: {nickname}', layout, size=(650, 500), disable_close=True, icon=window_icon, resizable=True, font=('Consolas', 10)).Finalize()
     window.TKroot.minsize(480,350)
     window['INPUT'].bind("<Return>", "_Enter")
     cur_window = int(window.TKroot.frame(), base=16) # window id
@@ -636,7 +646,7 @@ def mygui(txtbox):
             txtbox.put("/help") # Send to write thread
         elif event == 'CREDITS':
             txtbox.put("/credits") # Send to write thread
-        elif event == 'Online users':
+        elif event == 'Online Users':
             txtbox.put("/list") # Send to write thread
         elif event == 'DM':
             window['INPUT'].update("/dm name;msg")

@@ -1,3 +1,10 @@
+# 1.5.1
+- Added option to disable the flood block
+- Added option to disable version control
+- Now registered users need to login even if auth is disabled 
+- Changed password encryption criteria to a safer one
+- Fixed GUI bug
+- Converted donut.exe into a module "mydonut.py"
 # 1.5.0
 - New logo and icon
 - Added version compatibility check
