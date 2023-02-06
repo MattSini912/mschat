@@ -1,3 +1,4 @@
 dolog:True
 auth:False
 server_open:True
+flood_block:True
