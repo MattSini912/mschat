@@ -1,12 +1,17 @@
-# mschat
+# MSCHAT
+                         _           _    
+      _ __ ___  ___  ___| |__   __ _| |_  
+     | '_ ` _ \/ __|/ __| '_ \ / _` | __|
+     | | | | | \__ \ (__| | | | (_| | |_ 
+     |_| |_| |_|___/\___|_| |_|\__,_|\__|
 
-**mschat** is a simple command-line application where you can:
+## Read the [WIKI](https://github.com/MattSini912/mschat/wiki/) for deeper information.
+
+**mschat** is a simple application that allows you:
 - create your own chat server using the [server](MSCHAT/server)
 - connect to an existing server using the [client](MSCHAT/client.exe)
 
 Source code for the project can be found [here](MSCHAT/src). Note that I've used a [custom version](MSCHAT/src/pydispo.py) of the [pydispo](https://github.com/aakash30jan/pydispo) module.
-
-> NOTE: this guide needs an update (new functions added).
 
 ## Encryption
 Messages sent using **mschat** are encrypted using:
@@ -16,21 +21,20 @@ Messages sent using **mschat** are encrypted using:
 
 > DISCLAIMER: encryption effectiveness is not guaranteed by any official standard.
 
-## GUI (1.4.0+)
-Starting from version 1.4.0 the application is provided with a simple graphical interface with useful features:
+## GUI
 
 ![gui](https://user-images.githubusercontent.com/106877447/203284504-11b58c6b-3ed1-4629-8d2f-0a9ece94a8b5.PNG)
 
-- **Send**: sends the message in the typing box, you can also press ENTER
-- **Help**: shows all the commands
-- **Online users**: shows the connected users
+- **Send**: send the message in the typing box, you can also press ENTER
+- **Help**: show all the commands
+- **Online users**: show connected users
 - **Close window**: makes you leave the chat
-- **/**: adds '/' character
-- **DM**: adds a template for direct messages
-- **C**: clears the input
-- **Clear window**: clears all text
+- **/**: add '/' character
+- **DM**: add a template for direct messages
+- **C**: clear the input
+- **Clear window**: clear all text
 
-The interface enables you to write text while receiving messages. It's not supported for the authentication functions (`/register` and `/delete`) so you must interact with the terminal to use them. The GUI is launched automatically with the default `/login` function. 
+The interface enables you to write text while receiving messages. It's not supported for the authentication functions (`/register` and `/delete`): you must interact with the terminal to use them. The GUI is launched automatically with the default `/login` function. 
 
 To start the application without the GUI use the `/nogui` function.
 
@@ -138,18 +142,3 @@ Encrypted tunnel active!
 [2022/08/01 12:15:00] Connected to server as "SERVER"! 1 users online. List of commands: /help
 ```
 4. type `/settings help` to show all server's commands
-
-## Recommended folder structure
-```
-MSCHAT
-    |
-    pydispo.py [if using py]
-    mycryptfunc.py [if using py]
-    client.exe/py
-    server
-        |
-        mycryptfunc.py [if not fetched before by a py]
-        server.exe/py
-        [server files]
-```
-> INFO: donut.exe is a ASCII 3D spinning donut script, part of a small game included in this app, you can delete it if you don't want it.     
