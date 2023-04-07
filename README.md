@@ -24,16 +24,3 @@ Messages sent using **mschat** are encrypted using:
 ## GUI
 
 ![gui](https://user-images.githubusercontent.com/106877447/203284504-11b58c6b-3ed1-4629-8d2f-0a9ece94a8b5.PNG)
-
-- **Send**: send the message in the typing box, you can also press ENTER
-- **Help**: show all the commands
-- **Online users**: show connected users
-- **Close window**: makes you leave the chat
-- **/**: add '/' character
-- **DM**: add a template for direct messages
-- **C**: clear the input
-- **Clear window**: clear all text
-
-The interface enables you to write text while receiving messages. It's not supported for the authentication functions (`/register` and `/delete`): you must interact with the terminal to use them. The GUI is launched automatically with the default `/login` function. 
-
-To start the application without the GUI use the `/nogui` function.
