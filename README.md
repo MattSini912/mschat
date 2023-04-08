@@ -24,3 +24,8 @@ Messages sent using **mschat** are encrypted using:
 ## GUI
 
 ![gui](https://user-images.githubusercontent.com/106877447/203284504-11b58c6b-3ed1-4629-8d2f-0a9ece94a8b5.PNG)
+
+### Top [WIKI](https://github.com/MattSini912/mschat/wiki/) pages:
+- [How to download the client](https://github.com/MattSini912/mschat/wiki/client_download)
+- [Connecting to a server](https://github.com/MattSini912/mschat/wiki/login)
+- [Signing up on a server](https://github.com/MattSini912/mschat/wiki/register)
