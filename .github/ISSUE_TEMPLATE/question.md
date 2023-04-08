@@ -1,7 +1,7 @@
 ---
 name: Question
 about: Ask something you don't understand about this project
-title: ''
+title: e.g. "Why your code is so messy?"
 labels: question
 assignees: ''
 
