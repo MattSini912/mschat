@@ -3,7 +3,7 @@ name: Bug report
 about: Create a report to help us improve
 title: e.g. "Client.exe crashes after opening Chrome"
 labels: bug
-assignees: ''
+assignees: MattSini912
 
 ---
 
