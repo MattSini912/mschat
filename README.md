@@ -21,8 +21,9 @@ Messages sent using **mschat** are encrypted using:
 
 > DISCLAIMER: encryption effectiveness is not guaranteed by any official standard.
 
-## GUI
+## Screenshots
 
+![image](https://user-images.githubusercontent.com/106877447/230715803-73fb0ce2-7962-4052-81b3-8e3997a355e2.png)
 ![gui](https://user-images.githubusercontent.com/106877447/203284504-11b58c6b-3ed1-4629-8d2f-0a9ece94a8b5.PNG)
 
 ### Top [WIKI](https://github.com/MattSini912/mschat/wiki/) pages:
