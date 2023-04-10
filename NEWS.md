@@ -5,6 +5,7 @@
 - Changed password encryption criteria to a safer one
 - Fixed GUI bug
 - Converted donut.exe into a module "mydonut.py"
+- Wiki completed
 # 1.5.0
 - New logo and icon
 - Added version compatibility check
