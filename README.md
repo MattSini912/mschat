@@ -30,3 +30,6 @@ Messages sent using **mschat** are encrypted using:
 - [How to download the client](https://github.com/MattSini912/mschat/wiki/client_download)
 - [Connecting to a server](https://github.com/MattSini912/mschat/wiki/login)
 - [Signing up on a server](https://github.com/MattSini912/mschat/wiki/register)
+
+### Note for fellows developers
+This application was developed to demonstrate and test the use of Python to create server applications and for this reason I didn't focus on code readability and efficiency. Sorry.
